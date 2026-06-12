@@ -4,6 +4,17 @@ import { supabase } from '../lib/supabase'
 
 const R = v => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+// Corrige caracteres corrompidos vindos do Excel (encoding Windows-1252)
+function limparTexto(str) {
+  if (!str) return ''
+  return str
+    .replace(/MANUTEN[^A-Z]*/g, 'MANUTENÇÃO')
+    .replace(/CONSOLIDA[^A-Z]*/g, 'CONSOLIDAÇÃO')
+    .replace(/PRODU[^A-Z]{1,3}O/g, 'PRODUÇÃO')
+    .replace(/[^\x00-\x7FÀ-ÿ]/g, '')
+    .trim().toUpperCase()
+}
+
 // COMP da planilha vem como número serial Excel (ex: 46143) — converte para MM/AAAA
 function serialParaComp(val) {
   if (!val) return ''
@@ -47,7 +58,7 @@ export default function DS() {
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
-        const wb = XLSX.read(e.target.result, { type: 'array' })
+        const wb = XLSX.read(e.target.result, { type: 'array', codepage: 65001 })
         const sheet = wb.Sheets[wb.SheetNames[0]]
         const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' })
 
@@ -62,7 +73,7 @@ export default function DS() {
           }
           const comp = serialParaComp(get('COMP', 'COMPETENCIA', 'COMPETÊNCIA'))
           const nds = get('Nº DA DS', 'N∫ DA DS', 'NUM DS', 'NUMERO DS', 'NR DS', 'DS')
-          const obra = (get('NOME C.CUSTO COMP', 'OBRA', 'C.CUSTO NOME', 'NOME C CUSTO') || '').toString().trim().toUpperCase()
+          const obra = limparTexto((get('NOME C.CUSTO COMP', 'OBRA', 'C.CUSTO NOME', 'NOME C CUSTO') || '').toString())
           const valor = parseFloat(get('VALOR DA DS', 'VALOR') || 0)
           const tipo_ds = (get('TIPO') || '').toString().trim().toUpperCase()
           const filial = parseInt(get('FILIAL') || 0)
