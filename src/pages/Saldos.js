@@ -70,11 +70,11 @@ export default function Saldos() {
     setLoading(false)
   }
 
-  function getSaldo(d) { return d.totalDs - d.totalFat - d.totalTr }
+  function getSaldo(d) { return (d.saldo_inicial || 0) + d.totalDs - d.totalFat - d.totalTr }
 
   // Aplica filtro de competência nas DS e NF
   function getDadosComp(d, comp) {
-    if (comp === 'todos') return { ds: d.ds, fat: d.fat, totalDs: d.totalDs, totalFat: d.totalFat + d.totalTr }
+    if (comp === 'todos') return { ds: d.ds, fat: d.fat, totalDs: (d.saldo_inicial || 0) + d.totalDs, totalFat: d.totalFat + d.totalTr }
     const ds  = d.ds.filter(x => normComp(x.competencia) === comp)
     const fat = d.fat.filter(x => normComp(x.competencia) === comp)
     const trsIn  = d.transferencias_in.filter(x => normComp(x.competencia) === comp)

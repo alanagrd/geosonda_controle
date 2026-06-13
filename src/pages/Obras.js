@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-const EMPTY = { nome: '', tipo: 'direto', cliente: '', observacao: '' }
+const EMPTY = { nome: '', tipo: 'direto', cliente: '', observacao: '', saldo_inicial: 0 }
 
 export default function Obras() {
   const [obras, setObras] = useState([])
@@ -26,7 +26,7 @@ export default function Obras() {
   async function salvar() {
     if (!form.nome.trim()) { setErro('Informe o nome da obra.'); return }
     setSaving(true); setErro('')
-    const payload = { nome: form.nome.trim().toUpperCase(), tipo: form.tipo, cliente: form.cliente, observacao: form.observacao }
+    const payload = { nome: form.nome.trim().toUpperCase(), tipo: form.tipo, cliente: form.cliente, observacao: form.observacao, saldo_inicial: parseFloat(form.saldo_inicial) || 0 }
     const { error } = editId
       ? await supabase.schema('geosonda').from('obras').update(payload).eq('id', editId)
       : await supabase.schema('geosonda').from('obras').insert(payload)
@@ -41,7 +41,7 @@ export default function Obras() {
   }
 
   function editar(o) {
-    setForm({ nome: o.nome, tipo: o.tipo, cliente: o.cliente || '', observacao: o.observacao || '' })
+    setForm({ nome: o.nome, tipo: o.tipo, cliente: o.cliente || '', observacao: o.observacao || '', saldo_inicial: o.saldo_inicial || 0 })
     setEditId(o.id); setErro(''); setModal(true)
   }
 
@@ -127,6 +127,12 @@ export default function Obras() {
             <div className="field">
               <label>Cliente</label>
               <input value={form.cliente} onChange={e => setForm(f => ({ ...f, cliente: e.target.value }))} placeholder="Ex: GARDENA" />
+            </div>
+            <div className="field">
+              <label>Saldo devedor inicial (R$) — posição em 31/12/2025</label>
+              <input type="number" step="0.01" value={form.saldo_inicial}
+                onChange={e => setForm(f => ({ ...f, saldo_inicial: e.target.value }))}
+                placeholder="0,00" />
             </div>
             <div className="field">
               <label>Observação</label>
