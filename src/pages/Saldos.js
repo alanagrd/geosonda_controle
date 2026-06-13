@@ -87,10 +87,10 @@ export default function Saldos() {
     return true
   })
 
-  const totalGeralDs  = filtrados.reduce((a, d) => a + d.totalDs, 0)
-  const totalGeralFat = filtrados.reduce((a, d) => a + d.totalFat + d.totalTr, 0)
+  const totalGeralDs    = filtrados.reduce((a, d) => { const { totalDs } = getDadosComp(d, filtroComp); return a + totalDs }, 0)
+  const totalGeralFat   = filtrados.reduce((a, d) => { const { totalFat } = getDadosComp(d, filtroComp); return a + totalFat }, 0)
   const totalGeralSaldo = totalGeralDs - totalGeralFat
-  const countPendentes = filtrados.filter(d => getSaldo(d) > 0.01).length
+  const countPendentes  = filtrados.filter(d => { const { totalDs, totalFat } = getDadosComp(d, filtroComp); return (totalDs - totalFat) > 0.01 }).length
 
   const diretos  = filtrados.filter(d => d.tipo === 'direto')
   const geosonda = filtrados.filter(d => d.tipo === 'geosonda')

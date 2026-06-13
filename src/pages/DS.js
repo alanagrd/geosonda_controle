@@ -8,7 +8,7 @@ const R = v => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2
 function limparTexto(str) {
   if (!str) return ''
   return str
-    .replace(/MANUTEN[^A-Z]*/g, 'MANUTENÇÃO')
+    .replace(/MANUTEN[^A-Z]*O{0,2}/g, 'MANUTENÇÃO')
     .replace(/CONSOLIDA[^A-Z]*/g, 'CONSOLIDAÇÃO')
     .replace(/PRODU[^A-Z]{1,3}O/g, 'PRODUÇÃO')
     .replace(/[^\x00-\x7FÀ-ÿ]/g, '')
