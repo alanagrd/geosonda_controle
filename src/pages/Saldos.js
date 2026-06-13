@@ -244,6 +244,11 @@ function DetalheObra({ d, filtroComp }) {
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
       <div>
         <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>DS Lançadas</div>
+        {d.saldo_inicial > 0 && (
+          <div style={{ background: 'var(--amber-bg)', border: '0.5px solid #FAC775', borderRadius: 'var(--r)', padding: '8px 12px', marginBottom: 10, fontSize: 12, color: 'var(--amber)' }}>
+            <strong>Saldo anterior (até 31/03/2026):</strong> R$ {R(d.saldo_inicial)}
+          </div>
+        )}
         {ds.length === 0 ? <p style={{ fontSize: 12, color: 'var(--text3)' }}>Nenhuma DS neste filtro.</p> : (
           <table>
             <thead><tr><th>Comp.</th><th>Nº DS</th><th>Tipo</th><th className="num">Valor</th></tr></thead>
@@ -257,7 +262,10 @@ function DetalheObra({ d, filtroComp }) {
                 </tr>
               ))}
             </tbody>
-            <tfoot><tr><td colSpan={3} style={{ fontSize: 11 }}>Total DS</td><td className="num">R$ {R(ds.reduce((a,x)=>a+Number(x.valor),0))}</td></tr></tfoot>
+            <tfoot><tr>
+              <td colSpan={3} style={{ fontSize: 11 }}>Total DS{d.saldo_inicial > 0 ? ' + Saldo anterior' : ''}</td>
+              <td className="num">R$ {R(ds.reduce((a,x) => a + Number(x.valor), 0) + Number(d.saldo_inicial || 0))}</td>
+            </tr></tfoot>
           </table>
         )}
       </div>
