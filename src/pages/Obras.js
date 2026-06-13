@@ -129,7 +129,7 @@ export default function Obras() {
               <input value={form.cliente} onChange={e => setForm(f => ({ ...f, cliente: e.target.value }))} placeholder="Ex: GARDENA" />
             </div>
             <div className="field">
-              <label>Saldo devedor inicial (R$) — posição em 31/12/2025</label>
+              <label>Saldo devedor inicial (R$) — posição em 31/03/2026</label>
               <input type="number" step="0.01" value={form.saldo_inicial}
                 onChange={e => setForm(f => ({ ...f, saldo_inicial: e.target.value }))}
                 placeholder="0,00" />
