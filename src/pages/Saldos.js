@@ -22,6 +22,7 @@ export default function Saldos() {
   const [filtroComp, setFiltroComp]     = useState('todos')
   const [expandida, setExpandida]       = useState(null)
   const [comps, setComps]               = useState([])
+  const [ordemAlfabetica, setOrdemAlfabetica] = useState(false)
 
   useEffect(() => { carregar() }, [])
 
@@ -134,7 +135,7 @@ export default function Saldos() {
             <th></th>
           </tr></thead>
           <tbody>
-            {lista.sort((a, b) => getSaldo(b) - getSaldo(a)).map(d => {
+            {lista.sort((a, b) => ordemAlfabetica ? a.nome.localeCompare(b.nome) : getSaldo(b) - getSaldo(a)).map(d => {
               const { totalDs, totalFat } = getDadosComp(d, filtroComp)
               const trTotal = filtroComp === 'todos' ? d.totalTr : 0
               const saldo = filtroComp === 'todos' ? getSaldo(d) : totalDs - totalFat
@@ -200,6 +201,9 @@ export default function Saldos() {
           <h2>Posição por obra</h2>
           <div style={{ display: 'flex', gap: 8 }}>
             <input style={{ width: 200 }} placeholder="Buscar obra..." value={busca} onChange={e => setBusca(e.target.value)} />
+            <button onClick={() => setOrdemAlfabetica(o => !o)}>
+              {ordemAlfabetica ? 'Ordenar por saldo' : 'Ordenar A→Z'}
+            </button>
             <button className="success" onClick={() => exportarCSV(dados)}>↓ Exportar CSV</button>
           </div>
         </div>
