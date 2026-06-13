@@ -7,12 +7,12 @@ const R = v => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2
 // Corrige caracteres corrompidos vindos do Excel (encoding Windows-1252)
 function limparTexto(str) {
   if (!str) return ''
-  return str
-    .replace(/MANUTEN[^A-Z]*O{0,2}/g, 'MANUTENÇÃO')
-    .replace(/CONSOLIDA[^A-Z]*/g, 'CONSOLIDAÇÃO')
-    .replace(/PRODU[^A-Z]{1,3}O/g, 'PRODUÇÃO')
-    .replace(/[^\x00-\x7FÀ-ÿ]/g, '')
-    .trim().toUpperCase()
+  let s = str.trim().toUpperCase()
+  s = s.replace(/MANUTEN[ÇC][ÃA]O+/g, 'MANUTENÇÃO')
+  s = s.replace(/CONSOLIDA[ÇC][ÃA]O+/g, 'CONSOLIDAÇÃO')
+  s = s.replace(/PRODU[ÇC][ÃA]O+/g, 'PRODUÇÃO')
+  s = s.replace(/[^\x20-\x7EÀ-ÿ]/g, '')
+  return s.trim()
 }
 
 // COMP da planilha vem como número serial Excel (ex: 46143) — converte para MM/AAAA
@@ -73,7 +73,7 @@ export default function DS() {
           }
           const comp = serialParaComp(get('COMP', 'COMPETENCIA', 'COMPETÊNCIA'))
           const nds = get('Nº DA DS', 'N∫ DA DS', 'NUM DS', 'NUMERO DS', 'NR DS', 'DS')
-          const obra = limparTexto((get('NOME C.CUSTO COMP', 'OBRA', 'C.CUSTO NOME', 'NOME C CUSTO') || '').toString())
+          const obra = limparTexto((get('NOME C.CUSTO', 'NOME C.CUSTO COMP', 'OBRA', 'C.CUSTO NOME', 'NOME C CUSTO') || '').toString())
           const valor = parseFloat(get('VALOR DA DS', 'VALOR') || 0)
           const tipo_ds = (get('TIPO') || '').toString().trim().toUpperCase()
           const filial = parseInt(get('FILIAL') || 0)
