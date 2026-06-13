@@ -87,10 +87,10 @@ export default function Saldos() {
     return true
   })
 
-  const totalGeralDs  = dados.reduce((a, d) => a + d.totalDs, 0)
-  const totalGeralFat = dados.reduce((a, d) => a + d.totalFat + d.totalTr, 0)
+  const totalGeralDs  = filtrados.reduce((a, d) => a + d.totalDs, 0)
+  const totalGeralFat = filtrados.reduce((a, d) => a + d.totalFat + d.totalTr, 0)
   const totalGeralSaldo = totalGeralDs - totalGeralFat
-  const countPendentes = dados.filter(d => getSaldo(d) > 0.01).length
+  const countPendentes = filtrados.filter(d => getSaldo(d) > 0.01).length
 
   const diretos  = filtrados.filter(d => d.tipo === 'direto')
   const geosonda = filtrados.filter(d => d.tipo === 'geosonda')
@@ -295,7 +295,7 @@ function exportarCSV(dados) {
     const saldo = d.totalDs - d.totalFat - d.totalTr
     csv += `"${d.nome}";"${d.tipo}";${R(d.totalDs)};${R(d.totalFat)};${R(d.totalTr)};${R(saldo)}\n`
   })
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
   a.download = `geosonda_saldos_${new Date().toISOString().slice(0,10)}.csv`
