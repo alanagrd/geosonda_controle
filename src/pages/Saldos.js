@@ -64,13 +64,16 @@ export default function Saldos() {
 
   // Aplica filtro de competência nas DS e NF
   function getDadosComp(d, comp) {
-    if (comp === 'todos') return { ds: d.ds, fat: d.fat, totalDs: d.totalDs, totalFat: d.totalFat }
+    if (comp === 'todos') return { ds: d.ds, fat: d.fat, totalDs: d.totalDs, totalFat: d.totalFat + d.totalTr }
     const ds  = d.ds.filter(x => x.competencia === comp)
     const fat = d.fat.filter(x => x.competencia === comp)
+    const trsIn  = d.transferencias_in.filter(x => x.competencia === comp)
+    const trsOut = d.transferencias_out.filter(x => x.competencia === comp)
+    const totalTr = trsIn.reduce((a,x) => a + Number(x.valor), 0) - trsOut.reduce((a,x) => a + Number(x.valor), 0)
     return {
       ds, fat,
       totalDs:  ds.reduce((a, x) => a + Number(x.valor), 0),
-      totalFat: fat.reduce((a, x) => a + Number(x.valor), 0),
+      totalFat: fat.reduce((a, x) => a + Number(x.valor), 0) + totalTr,
     }
   }
 
