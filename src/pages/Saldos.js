@@ -126,7 +126,12 @@ export default function Saldos() {
         <div className="section-header">{titulo}</div>
         <table>
           <thead><tr>
-            <th>Obra</th>
+            <th>
+              Obra
+              <button className="sm" style={{ marginLeft: 8, fontWeight: 400 }} onClick={() => setOrdemAlfabetica(o => !o)}>
+                {ordemAlfabetica ? '↕ Saldo' : 'A→Z'}
+              </button>
+            </th>
             <th className="num">Total DS</th>
             <th className="num">NF Faturada</th>
             <th className="num">Transf.</th>
@@ -201,9 +206,6 @@ export default function Saldos() {
           <h2>Posição por obra</h2>
           <div style={{ display: 'flex', gap: 8 }}>
             <input style={{ width: 200 }} placeholder="Buscar obra..." value={busca} onChange={e => setBusca(e.target.value)} />
-            <button onClick={() => setOrdemAlfabetica(o => !o)}>
-              {ordemAlfabetica ? 'Ordenar por saldo' : 'Ordenar A→Z'}
-            </button>
             <button className="success" onClick={() => exportarCSV(dados)}>↓ Exportar CSV</button>
           </div>
         </div>
