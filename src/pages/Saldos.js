@@ -23,17 +23,24 @@ export default function Saldos() {
   const [expandida, setExpandida]       = useState(null)
   const [comps, setComps]               = useState([])
   const [ordemAlfabetica, setOrdemAlfabetica] = useState(false)
+  const [modalTrDs, setModalTrDs] = useState(false)
+  const [formTrDs, setFormTrDs]   = useState({ competencia: '', obra_origem: '', obra_destino: '', valor: '', motivo: '' })
+  const [obras, setObras]         = useState([])
+  const [savingTrDs, setSavingTrDs] = useState(false)
+  const [erroTrDs, setErroTrDs]   = useState('')
 
   useEffect(() => { carregar() }, [])
 
   async function carregar() {
     setLoading(true)
-    const [{ data: obras }, { data: dsData }, { data: fatData }, { data: trData }] = await Promise.all([
+    const [{ data: obras }, { data: dsData }, { data: fatData }, { data: trData }, { data: trDsData }] = await Promise.all([
       supabase.schema('geosonda').from('obras').select('*').order('nome'),
       supabase.schema('geosonda').from('ds').select('*').order('competencia').order('numero_ds'),
       supabase.schema('geosonda').from('faturamento').select('*').order('competencia').order('data_nf'),
       supabase.schema('geosonda').from('transferencias').select('*').order('competencia'),
+      supabase.schema('geosonda').from('transferencias_ds').select('*').order('competencia'),
     ])
+    setObras(obras || [])
 
     const todasComps = [
       ...new Set([
@@ -46,18 +53,18 @@ export default function Saldos() {
     // Monta mapa de saldos por obra
     const mapa = {}
     ;(obras || []).forEach(o => {
-      mapa[o.nome] = { ...o, ds: [], fat: [], transferencias_in: [], transferencias_out: [], totalDs: 0, totalFat: 0, totalTr: 0 }
+      mapa[o.nome] = { ...o, saldo_inicial: Number(o.saldo_inicial || 0), ds: [], fat: [], transferencias_in: [], transferencias_out: [], trDs_in: [], trDs_out: [], totalDs: 0, totalFat: 0, totalTr: 0 }
     })
 
     // Garante que obras que aparecem nas DS mas não estão cadastradas também apareçam
     ;(dsData || []).forEach(d => {
-      if (!mapa[d.obra]) mapa[d.obra] = { nome: d.obra, tipo: 'direto', ds: [], fat: [], transferencias_in: [], transferencias_out: [], totalDs: 0, totalFat: 0, totalTr: 0 }
+      if (!mapa[d.obra]) mapa[d.obra] = { nome: d.obra, tipo: 'direto', ds: [], fat: [], transferencias_in: [], transferencias_out: [], trDs_in: [], trDs_out: [], totalDs: 0, totalFat: 0, totalTr: 0 }
       mapa[d.obra].ds.push(d)
       mapa[d.obra].totalDs += Number(d.valor)
     })
 
     ;(fatData || []).forEach(f => {
-      if (!mapa[f.obra]) mapa[f.obra] = { nome: f.obra, tipo: 'direto', ds: [], fat: [], transferencias_in: [], transferencias_out: [], totalDs: 0, totalFat: 0, totalTr: 0 }
+      if (!mapa[f.obra]) mapa[f.obra] = { nome: f.obra, tipo: 'direto', ds: [], fat: [], transferencias_in: [], transferencias_out: [], trDs_in: [], trDs_out: [], totalDs: 0, totalFat: 0, totalTr: 0 }
       mapa[f.obra].fat.push(f)
       mapa[f.obra].totalFat += Number(f.valor)
     })
@@ -67,29 +74,41 @@ export default function Saldos() {
       if (mapa[t.obra_origem])  { mapa[t.obra_origem].transferencias_out.push(t); mapa[t.obra_origem].totalTr  -= Number(t.valor) }
     })
 
+    ;(trDsData || []).forEach(t => {
+      if (mapa[t.obra_destino]) { mapa[t.obra_destino].trDs_in.push(t) }
+      if (mapa[t.obra_origem])  { mapa[t.obra_origem].trDs_out.push(t) }
+    })
+
     setDados(Object.values(mapa))
     setLoading(false)
   }
 
-  function getSaldo(d) { return (d.saldo_inicial || 0) + d.totalDs - d.totalFat - d.totalTr }
+  function getSaldo(d) {
+    const trDsIn  = (d.trDs_in  || []).reduce((a, t) => a + Number(t.valor), 0)
+    const trDsOut = (d.trDs_out || []).reduce((a, t) => a + Number(t.valor), 0)
+    return Number(d.saldo_inicial || 0) + d.totalDs + trDsIn - trDsOut - d.totalFat - d.totalTr
+  }
 
   // Aplica filtro de competência nas DS e NF
   function getDadosComp(d, comp) {
     const saldoInicial = Number(d.saldo_inicial || 0)
+    const trDsIn  = comp === 'todos' ? (d.trDs_in  || []) : (d.trDs_in  || []).filter(x => x.competencia === comp)
+    const trDsOut = comp === 'todos' ? (d.trDs_out || []) : (d.trDs_out || []).filter(x => x.competencia === comp)
+    const totalTrDs = trDsIn.reduce((a,x) => a + Number(x.valor), 0) - trDsOut.reduce((a,x) => a + Number(x.valor), 0)
     if (comp === 'todos') return {
       ds: d.ds, fat: d.fat,
-      totalDs: saldoInicial + d.totalDs,
+      totalDs: saldoInicial + d.totalDs + totalTrDs,
       totalFat: d.totalFat + d.totalTr
     }
     const ds  = d.ds.filter(x => normComp(x.competencia) === comp)
     const fat = d.fat.filter(x => normComp(x.competencia) === comp)
-    const trsIn  = d.transferencias_in.filter(x => normComp(x.competencia) === comp)
-    const trsOut = d.transferencias_out.filter(x => normComp(x.competencia) === comp)
+    const trsIn  = (d.transferencias_in  || []).filter(x => normComp(x.competencia) === comp)
+    const trsOut = (d.transferencias_out || []).filter(x => normComp(x.competencia) === comp)
     const totalTr = trsIn.reduce((a,x) => a + Number(x.valor), 0) - trsOut.reduce((a,x) => a + Number(x.valor), 0)
     return {
       ds, fat,
-      totalDs: saldoInicial + ds.reduce((a, x) => a + Number(x.valor), 0),
-      totalFat: fat.reduce((a, x) => a + Number(x.valor), 0) + totalTr,
+      totalDs: saldoInicial + ds.reduce((a,x) => a + Number(x.valor), 0) + totalTrDs,
+      totalFat: fat.reduce((a,x) => a + Number(x.valor), 0) + totalTr,
     }
   }
 
@@ -192,6 +211,18 @@ export default function Saldos() {
     )
   }
 
+  async function salvarTrDs() {
+    const { obra_origem, obra_destino, valor, motivo, competencia } = formTrDs
+    if (!obra_origem || !obra_destino || !valor || !competencia) { setErroTrDs('Preencha todos os campos obrigatórios.'); return }
+    if (obra_origem === obra_destino) { setErroTrDs('Origem e destino não podem ser iguais.'); return }
+    setSavingTrDs(true); setErroTrDs('')
+    const { error } = await supabase.schema('geosonda').from('transferencias_ds').insert({
+      competencia, obra_origem, obra_destino, valor: parseFloat(valor), motivo: motivo || null
+    })
+    if (error) { setErroTrDs(error.message); setSavingTrDs(false); return }
+    setSavingTrDs(false); setModalTrDs(false); carregar()
+  }
+
   return (
     <>
       <div className="summary-grid">
@@ -206,6 +237,7 @@ export default function Saldos() {
           <h2>Posição por obra</h2>
           <div style={{ display: 'flex', gap: 8 }}>
             <input style={{ width: 200 }} placeholder="Buscar obra..." value={busca} onChange={e => setBusca(e.target.value)} />
+            <button className="success" onClick={() => { setErroTrDs(''); setFormTrDs({ competencia: '', obra_origem: '', obra_destino: '', valor: '', motivo: '' }); setModalTrDs(true) }}>↔ Transferir DS</button>
             <button className="success" onClick={() => exportarCSV(dados)}>↓ Exportar CSV</button>
           </div>
         </div>
@@ -235,6 +267,49 @@ export default function Saldos() {
           </>
         )}
       </div>
+
+      {modalTrDs && (
+        <div className="modal-overlay open" onClick={e => e.target === e.currentTarget && setModalTrDs(false)}>
+          <div className="modal">
+            <h2>Transferir DS entre obras</h2>
+            <div style={{ background: 'var(--amber-bg)', border: '0.5px solid #FAC775', borderRadius: 'var(--r)', padding: '10px 14px', marginBottom: 16, fontSize: 12, color: 'var(--amber)' }}>
+              Use quando o valor devido de uma obra vai ser cobrado de outra. O saldo sai da origem e entra no destino.
+            </div>
+            <div className="field"><label>Competência * (MM/AAAA)</label>
+              <input value={formTrDs.competencia} onChange={e => setFormTrDs(f => ({ ...f, competencia: e.target.value }))} placeholder="05/2026" />
+            </div>
+            <div className="field"><label>Obra de origem (que transfere o débito) *</label>
+              <select value={formTrDs.obra_origem} onChange={e => setFormTrDs(f => ({ ...f, obra_origem: e.target.value }))}>
+                <option value="">Selecione...</option>
+                {obras.map(o => <option key={o.nome} value={o.nome}>{o.nome}</option>)}
+              </select>
+              {formTrDs.obra_origem && (() => {
+                const d = dados.find(x => x.nome === formTrDs.obra_origem)
+                if (!d) return null
+                const s = getSaldo(d)
+                return <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>Saldo atual: <strong style={{ color: s > 0 ? 'var(--amber)' : 'var(--red)' }}>R$ {R(Math.abs(s))}</strong></div>
+              })()}
+            </div>
+            <div className="field"><label>Obra de destino (que assume o débito) *</label>
+              <select value={formTrDs.obra_destino} onChange={e => setFormTrDs(f => ({ ...f, obra_destino: e.target.value }))}>
+                <option value="">Selecione...</option>
+                {obras.filter(o => o.nome !== formTrDs.obra_origem).map(o => <option key={o.nome} value={o.nome}>{o.nome}</option>)}
+              </select>
+            </div>
+            <div className="field"><label>Valor a transferir (R$) *</label>
+              <input type="number" step="0.01" value={formTrDs.valor} onChange={e => setFormTrDs(f => ({ ...f, valor: e.target.value }))} placeholder="0,00" />
+            </div>
+            <div className="field"><label>Motivo</label>
+              <input value={formTrDs.motivo} onChange={e => setFormTrDs(f => ({ ...f, motivo: e.target.value }))} placeholder="Ex: DS 16521 DIAVISTA → TIRAVISTA" />
+            </div>
+            {erroTrDs && <p style={{ color: 'var(--red)', fontSize: 13 }}>{erroTrDs}</p>}
+            <div className="modal-footer">
+              <button onClick={() => setModalTrDs(false)}>Cancelar</button>
+              <button className="primary" onClick={salvarTrDs} disabled={savingTrDs}>{savingTrDs ? 'Salvando...' : 'Confirmar transferência'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
@@ -273,6 +348,20 @@ function DetalheObra({ d, filtroComp }) {
               <td className="num">R$ {R(ds.reduce((a,x) => a + Number(x.valor), 0) + Number(d.saldo_inicial || 0))}</td>
             </tr></tfoot>
           </table>
+        )}
+        {(d.trDs_out || []).length > 0 && (
+          <div style={{ marginTop: 8, background: 'var(--red-bg)', border: '0.5px solid #F7C1C1', borderRadius: 'var(--r)', padding: '8px 12px', fontSize: 12, color: 'var(--red)' }}>
+            {(d.trDs_out || []).map(t => (
+              <div key={t.id}>↗ <strong>Transferido para {t.obra_destino}:</strong> R$ {R(t.valor)} {t.motivo ? `— ${t.motivo}` : ''}</div>
+            ))}
+          </div>
+        )}
+        {(d.trDs_in || []).length > 0 && (
+          <div style={{ marginTop: 8, background: 'var(--green-bg)', border: '0.5px solid #C0DD97', borderRadius: 'var(--r)', padding: '8px 12px', fontSize: 12, color: 'var(--green)' }}>
+            {(d.trDs_in || []).map(t => (
+              <div key={t.id}>↙ <strong>Recebido de {t.obra_origem}:</strong> R$ {R(t.valor)} {t.motivo ? `— ${t.motivo}` : ''}</div>
+            ))}
+          </div>
         )}
       </div>
       <div>
