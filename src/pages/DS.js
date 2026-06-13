@@ -15,11 +15,14 @@ function limparTexto(str) {
   return s.trim()
 }
 
-// COMP da planilha vem como número serial Excel (ex: 46143) — converte para MM/AAAA
+// COMP da planilha vem como número serial Excel (ex: 46143) ou data DD/MM/YYYY — converte para MM/AAAA
 function serialParaComp(val) {
   if (!val) return ''
+  const s = String(val).trim()
   // Se já é string no formato MM/AAAA
-  if (typeof val === 'string' && /^\d{2}\/\d{4}$/.test(val.trim())) return val.trim()
+  if (/^\d{2}\/\d{4}$/.test(s)) return s
+  // Se é data no formato DD/MM/YYYY (Excel com formatação de data personalizada)
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return `${s.slice(3, 5)}/${s.slice(6)}`
   // Se é número serial Excel (dias desde 1900-01-01)
   const num = Number(val)
   if (!isNaN(num) && num > 40000) {
@@ -28,7 +31,7 @@ function serialParaComp(val) {
     const a = date.getUTCFullYear()
     return `${m}/${a}`
   }
-  return String(val)
+  return s
 }
 
 export default function DS() {

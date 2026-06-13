@@ -1,8 +1,17 @@
-// v2
+// v3
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 const R = v => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+// Normaliza competência para MM/AAAA independente do formato salvo no banco
+function normComp(val) {
+  if (!val) return ''
+  const s = String(val).trim()
+  if (/^\d{2}\/\d{4}$/.test(s)) return s
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return `${s.slice(3, 5)}/${s.slice(6)}`
+  return s
+}
 
 export default function Saldos() {
   const [dados, setDados]   = useState([])
@@ -27,8 +36,8 @@ export default function Saldos() {
 
     const todasComps = [
       ...new Set([
-        ...(dsData || []).map(d => d.competencia),
-        ...(fatData || []).map(f => f.competencia),
+        ...(dsData || []).map(d => normComp(d.competencia)),
+        ...(fatData || []).map(f => normComp(f.competencia)),
       ])
     ].filter(Boolean).sort().reverse()
     setComps(todasComps)
@@ -66,10 +75,10 @@ export default function Saldos() {
   // Aplica filtro de competência nas DS e NF
   function getDadosComp(d, comp) {
     if (comp === 'todos') return { ds: d.ds, fat: d.fat, totalDs: d.totalDs, totalFat: d.totalFat + d.totalTr }
-    const ds  = d.ds.filter(x => x.competencia === comp)
-    const fat = d.fat.filter(x => x.competencia === comp)
-    const trsIn  = d.transferencias_in.filter(x => x.competencia === comp)
-    const trsOut = d.transferencias_out.filter(x => x.competencia === comp)
+    const ds  = d.ds.filter(x => normComp(x.competencia) === comp)
+    const fat = d.fat.filter(x => normComp(x.competencia) === comp)
+    const trsIn  = d.transferencias_in.filter(x => normComp(x.competencia) === comp)
+    const trsOut = d.transferencias_out.filter(x => normComp(x.competencia) === comp)
     const totalTr = trsIn.reduce((a,x) => a + Number(x.valor), 0) - trsOut.reduce((a,x) => a + Number(x.valor), 0)
     return {
       ds, fat,
