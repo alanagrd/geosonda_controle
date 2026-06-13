@@ -73,7 +73,7 @@ export default function DS() {
           }
           const comp = serialParaComp(get('COMP', 'COMPETENCIA', 'COMPETÊNCIA'))
           const nds = get('Nº DA DS', 'N∫ DA DS', 'NUM DS', 'NUMERO DS', 'NR DS', 'DS')
-          const obra = limparTexto((get('NOME C.CUSTO', 'NOME C.CUSTO COMP', 'OBRA', 'C.CUSTO NOME', 'NOME C CUSTO') || '').toString())
+          const obra = limparTexto((get('NOME C.CUSTO COMP', 'NOME C.CUSTO', 'OBRA', 'C.CUSTO NOME', 'NOME C CUSTO') || '').toString())
           const valor = parseFloat(get('VALOR DA DS', 'VALOR') || 0)
           const tipo_ds = (get('TIPO') || '').toString().trim().toUpperCase()
           const filial = parseInt(get('FILIAL') || 0)
