@@ -21,6 +21,7 @@ export default function Faturamento() {
   const [formTr, setFormTr]         = useState(EMPTY_TR)
   const [saving, setSaving] = useState(false)
   const [erro, setErro]     = useState('')
+  const [editId, setEditId] = useState(null)
 
   useEffect(() => { carregar() }, [])
 
@@ -48,16 +49,36 @@ export default function Faturamento() {
     setLoading(false)
   }
 
+  function editar(f) {
+    setFormFat({
+      competencia: f.competencia || '',
+      data_nf: f.data_nf || today(),
+      numero_nf: f.numero_nf || '',
+      obra: f.obra || '',
+      valor: f.valor || '',
+      observacao: f.observacao || ''
+    })
+    setEditId(f.id)
+    setErro('')
+    setModalFat(true)
+  }
+
   async function salvarFat() {
     if (!formFat.obra || !formFat.valor || !formFat.competencia) { setErro('Preencha obra, competência e valor.'); return }
     setSaving(true); setErro('')
-    const { error } = await supabase.schema('geosonda').from('faturamento').insert({
-      competencia: formFat.competencia, data_nf: formFat.data_nf || null,
-      numero_nf: formFat.numero_nf || null, obra: formFat.obra,
-      valor: parseFloat(formFat.valor), observacao: formFat.observacao || null
-    })
+    const payload = {
+      competencia: formFat.competencia,
+      data_nf: formFat.data_nf || null,
+      numero_nf: formFat.numero_nf || null,
+      obra: formFat.obra,
+      valor: parseFloat(formFat.valor),
+      observacao: formFat.observacao || null
+    }
+    const { error } = editId
+      ? await supabase.schema('geosonda').from('faturamento').update(payload).eq('id', editId)
+      : await supabase.schema('geosonda').from('faturamento').insert(payload)
     if (error) { setErro(error.message); setSaving(false); return }
-    setSaving(false); setModalFat(false); setFormFat(EMPTY_FAT); carregar()
+    setSaving(false); setModalFat(false); setFormFat(EMPTY_FAT); setEditId(null); carregar()
   }
 
   async function salvarTransferencia() {
@@ -103,7 +124,7 @@ export default function Faturamento() {
           <div style={{ display: 'flex', gap: 8 }}>
             <input style={{ width: 200 }} placeholder="Buscar obra, nº NF..." value={busca} onChange={e => setBusca(e.target.value)} />
             <button className="success" onClick={() => { setErro(''); setFormTr(EMPTY_TR); setModalTr(true) }}>↔ Transferir saldo</button>
-            <button className="primary" onClick={() => { setErro(''); setFormFat(EMPTY_FAT); setModalFat(true) }}>+ Lançar NF</button>
+            <button className="primary" onClick={() => { setErro(''); setEditId(null); setFormFat(EMPTY_FAT); setModalFat(true) }}>+ Lançar NF</button>
           </div>
         </div>
 
@@ -131,7 +152,12 @@ export default function Faturamento() {
                   <td><strong>{f.obra}</strong></td>
                   <td className="num" style={{ color: 'var(--green)', fontWeight: 500 }}>R$ {R(f.valor)}</td>
                   <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, color: 'var(--text3)' }} title={f.observacao || ''}>{f.observacao || '—'}</td>
-                  <td><button className="sm danger" onClick={() => excluir(f.id)}>Remover</button></td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="sm" onClick={() => editar(f)}>Editar</button>
+                      <button className="sm danger" onClick={() => excluir(f.id)}>Remover</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -148,7 +174,7 @@ export default function Faturamento() {
       {modalFat && (
         <div className="modal-overlay open" onClick={e => e.target === e.currentTarget && setModalFat(false)}>
           <div className="modal">
-            <h2>Lançar NF faturada</h2>
+            <h2>{editId ? 'Editar NF' : 'Lançar NF faturada'}</h2>
             <div className="form-row">
               <div className="field"><label>Competência * (MM/AAAA)</label>
                 <input value={formFat.competencia} onChange={e => setFormFat(f => ({ ...f, competencia: e.target.value }))} placeholder="05/2026" />
@@ -177,7 +203,7 @@ export default function Faturamento() {
             {erro && <p style={{ color: 'var(--red)', fontSize: 13 }}>{erro}</p>}
             <div className="modal-footer">
               <button onClick={() => setModalFat(false)}>Cancelar</button>
-              <button className="primary" onClick={salvarFat} disabled={saving}>{saving ? 'Salvando...' : 'Lançar'}</button>
+              <button className="primary" onClick={salvarFat} disabled={saving}>{saving ? 'Salvando...' : editId ? 'Salvar alterações' : 'Lançar'}</button>
             </div>
           </div>
         </div>
