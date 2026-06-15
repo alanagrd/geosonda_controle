@@ -23,6 +23,8 @@ export default function Faturamento() {
   const [erro, setErro]     = useState('')
   const [editId, setEditId] = useState(null)
   const [ordemAlfabetica, setOrdemAlfabetica] = useState(false)
+  const [transferencias, setTransferencias] = useState([])
+  const [distribucao, setDistribucao] = useState(null)
 
   useEffect(() => { carregar() }, [])
 
@@ -36,6 +38,7 @@ export default function Faturamento() {
     ])
     setFat(fatData || [])
     setObras(obrasData || [])
+    setTransferencias(trData || [])
 
     // Calcula saldos para mostrar no modal de transferência
     const sMap = {}
@@ -48,6 +51,12 @@ export default function Faturamento() {
     })
     setSaldos(sMap)
     setLoading(false)
+  }
+
+  function verDistribuicao(f) {
+    if (!f.numero_nf) return
+    const trs = transferencias.filter(t => t.nf_referencia === f.numero_nf)
+    setDistribucao({ nf: f.numero_nf, obra: f.obra, valor: f.valor, competencia: f.competencia, transferencias: trs })
   }
 
   function editar(f) {
@@ -150,7 +159,14 @@ export default function Faturamento() {
                 <tr key={f.id}>
                   <td>{f.competencia}</td>
                   <td>{f.data_nf || '—'}</td>
-                  <td>{f.numero_nf ? <span className="badge badge-blue">NF {f.numero_nf}</span> : <span style={{ color: 'var(--text3)' }}>—</span>}</td>
+                  <td>
+                    {f.numero_nf ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span className="badge badge-blue">NF {f.numero_nf}</span>
+                        <button className="sm" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => verDistribuicao(f)} title="Ver distribuição">⊕</button>
+                      </div>
+                    ) : <span style={{ color: 'var(--text3)' }}>—</span>}
+                  </td>
                   <td><strong>{f.obra}</strong></td>
                   <td className="num" style={{ color: 'var(--green)', fontWeight: 500 }}>R$ {R(f.valor)}</td>
                   <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, color: 'var(--text3)' }} title={f.observacao || ''}>{f.observacao || '—'}</td>
@@ -206,6 +222,59 @@ export default function Faturamento() {
             <div className="modal-footer">
               <button onClick={() => setModalFat(false)}>Cancelar</button>
               <button className="primary" onClick={salvarFat} disabled={saving}>{saving ? 'Salvando...' : editId ? 'Salvar alterações' : 'Lançar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DISTRIBUIÇÃO */}
+      {distribucao && (
+        <div className="modal-overlay open" onClick={e => e.target === e.currentTarget && setDistribucao(null)}>
+          <div className="modal">
+            <h2>Distribuição — NF {distribucao.nf}</h2>
+            <div style={{ background: 'var(--accent-bg)', borderRadius: 'var(--r)', padding: '12px 14px', marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>Obra / Competência</div>
+              <div style={{ fontWeight: 600 }}>{distribucao.obra} — {distribucao.competencia}</div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--accent)', marginTop: 4 }}>R$ {R(distribucao.valor)}</div>
+            </div>
+
+            {distribucao.transferencias.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--text3)', textAlign: 'center', padding: '16px 0' }}>
+                Nenhuma transferência vinculada a esta NF.
+              </p>
+            ) : (
+              <>
+                <table>
+                  <thead><tr>
+                    <th>Origem</th><th>Destino</th><th className="num">Valor transf.</th><th>Motivo</th>
+                  </tr></thead>
+                  <tbody>
+                    {distribucao.transferencias.map(t => (
+                      <tr key={t.id}>
+                        <td>{t.obra_origem}</td>
+                        <td><strong>{t.obra_destino}</strong></td>
+                        <td className="num" style={{ color: 'var(--green)', fontWeight: 500 }}>R$ {R(t.valor)}</td>
+                        <td style={{ fontSize: 12, color: 'var(--text3)' }}>{t.motivo || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot><tr>
+                    <td colSpan={2} style={{ fontSize: 12 }}>Total transferido</td>
+                    <td className="num">R$ {R(distribucao.transferencias.reduce((a, t) => a + Number(t.valor), 0))}</td>
+                    <td />
+                  </tr></tfoot>
+                </table>
+                <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--surface2)', borderRadius: 'var(--r)', fontSize: 13 }}>
+                  Valor líquido na obra <strong>{distribucao.obra}</strong>:{' '}
+                  <strong style={{ color: 'var(--green)' }}>
+                    R$ {R(distribucao.valor - distribucao.transferencias.reduce((a, t) => a + Number(t.valor), 0))}
+                  </strong>
+                </div>
+              </>
+            )}
+
+            <div className="modal-footer">
+              <button className="primary" onClick={() => setDistribucao(null)}>Fechar</button>
             </div>
           </div>
         </div>
