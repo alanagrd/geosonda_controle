@@ -91,9 +91,9 @@ export default function Saldos() {
 
   // Aplica filtro de competência nas DS e NF
   function getDadosComp(d, comp) {
-    const saldoInicial = Number(d.saldo_inicial || 0)
-    const trDsIn  = comp === 'todos' ? (d.trDs_in  || []) : (d.trDs_in  || []).filter(x => x.competencia === comp)
-    const trDsOut = comp === 'todos' ? (d.trDs_out || []) : (d.trDs_out || []).filter(x => x.competencia === comp)
+    const saldoInicial = comp === 'todos' ? Number(d.saldo_inicial || 0) : 0
+    const trDsIn  = comp === 'todos' ? (d.trDs_in  || []) : (d.trDs_in  || []).filter(x => normComp(x.competencia) === comp)
+    const trDsOut = comp === 'todos' ? (d.trDs_out || []) : (d.trDs_out || []).filter(x => normComp(x.competencia) === comp)
     const totalTrDs = trDsIn.reduce((a,x) => a + Number(x.valor), 0) - trDsOut.reduce((a,x) => a + Number(x.valor), 0)
     if (comp === 'todos') return {
       ds: d.ds, fat: d.fat,
@@ -107,7 +107,7 @@ export default function Saldos() {
     const totalTr = trsIn.reduce((a,x) => a + Number(x.valor), 0) - trsOut.reduce((a,x) => a + Number(x.valor), 0)
     return {
       ds, fat,
-      totalDs: saldoInicial + ds.reduce((a,x) => a + Number(x.valor), 0) + totalTrDs,
+      totalDs: ds.reduce((a,x) => a + Number(x.valor), 0) + totalTrDs,
       totalFat: fat.reduce((a,x) => a + Number(x.valor), 0) + totalTr,
     }
   }
