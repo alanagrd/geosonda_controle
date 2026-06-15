@@ -188,9 +188,14 @@ export default function Saldos() {
                     </td>
                     <td>{badge}</td>
                     <td>
-                      <button className="sm" onClick={() => setExpandida(isExp ? null : d.nome)}>
-                        {isExp ? '▲ Fechar' : '▼ Detalhe'}
-                      </button>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="sm" onClick={() => setExpandida(isExp ? null : d.nome)}>
+                          {isExp ? '▲ Fechar' : '▼ Detalhe'}
+                        </button>
+                        <button className="sm" style={{ background: 'var(--red-bg)', color: 'var(--red)', borderColor: '#F7C1C1' }} onClick={() => exportarPDFDetalhado(d, filtroComp)}>
+                          PDF
+                        </button>
+                      </div>
                     </td>
                   </tr>
                   {isExp && (
@@ -521,6 +526,172 @@ function exportarPDF(filtrados, filtroComp, filtroTipo, getDadosComp) {
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
   a.download = `relatorio_geosonda_${filtroComp === 'todos' ? 'todos' : filtroComp.replace('/', '-')}_${new Date().toISOString().slice(0,10)}.html`
+  a.click()
+}
+
+function exportarPDFDetalhado(d, filtroComp) {
+  const R = v => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const hoje = new Date().toLocaleDateString('pt-BR')
+  const compLabel = filtroComp === 'todos' ? 'Todas' : filtroComp
+
+  const saldoInicial = Number(d.saldo_inicial || 0)
+  const ds = filtroComp === 'todos' ? d.ds : d.ds.filter(x => normComp(x.competencia) === filtroComp)
+  const fat = filtroComp === 'todos' ? d.fat : d.fat.filter(x => normComp(x.competencia) === filtroComp)
+  const trsIn  = filtroComp === 'todos' ? d.transferencias_in  : d.transferencias_in.filter(x => normComp(x.competencia) === filtroComp)
+  const trsOut = filtroComp === 'todos' ? d.transferencias_out : d.transferencias_out.filter(x => normComp(x.competencia) === filtroComp)
+  const trDsIn  = filtroComp === 'todos' ? (d.trDs_in  || []) : (d.trDs_in  || []).filter(x => normComp(x.competencia) === filtroComp)
+  const trDsOut = filtroComp === 'todos' ? (d.trDs_out || []) : (d.trDs_out || []).filter(x => normComp(x.competencia) === filtroComp)
+
+  const totalDs  = saldoInicial + ds.reduce((a, x) => a + Number(x.valor), 0) + trDsIn.reduce((a,x) => a + Number(x.valor), 0) - trDsOut.reduce((a,x) => a + Number(x.valor), 0)
+  const totalFat = fat.reduce((a, x) => a + Number(x.valor), 0) + trsIn.reduce((a,x) => a + Number(x.valor), 0) - trsOut.reduce((a,x) => a + Number(x.valor), 0)
+  const saldo = totalDs - totalFat
+
+  const rowsDS = ds.map(x => `
+    <tr>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;">${x.competencia}</td>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;">${x.numero_ds}</td>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;"><span style="background:#f0f0ee;padding:2px 8px;border-radius:20px;font-size:11px;">${x.tipo_ds}</span></td>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;text-align:right;">R$ ${R(x.valor)}</td>
+    </tr>`).join('')
+
+  const rowsTrDsOut = trDsOut.map(x => `
+    <tr style="background:#FFF5F5;">
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;">${x.competencia}</td>
+      <td colspan="2" style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;color:#A32D2D;">↗ Transferido para ${x.obra_destino}${x.motivo ? ` — ${x.motivo}` : ''}</td>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;text-align:right;color:#A32D2D;">- R$ ${R(x.valor)}</td>
+    </tr>`).join('')
+
+  const rowsTrDsIn = trDsIn.map(x => `
+    <tr style="background:#F5FBF0;">
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;">${x.competencia}</td>
+      <td colspan="2" style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;color:#3B6D11;">↙ Recebido de ${x.obra_origem}${x.motivo ? ` — ${x.motivo}` : ''}</td>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;text-align:right;color:#3B6D11;">R$ ${R(x.valor)}</td>
+    </tr>`).join('')
+
+  const rowsFat = fat.map(x => `
+    <tr>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;">${x.competencia}</td>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;">${x.numero_nf ? `<span style="background:#E6F1FB;color:#185FA5;padding:2px 8px;border-radius:20px;font-size:11px;">NF ${x.numero_nf}</span>` : '—'}</td>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;color:#3B6D11;text-align:right;">R$ ${R(x.valor)}</td>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;font-size:11px;color:#999;">${x.observacao || ''}</td>
+    </tr>`).join('')
+
+  const rowsTrIn = trsIn.map(x => `
+    <tr style="background:#F5FBF0;">
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;">${x.competencia}</td>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;color:#3B6D11;">↙ Crédito de ${x.obra_origem}${x.nf_referencia ? ` (${x.nf_referencia})` : ''}</td>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;color:#3B6D11;text-align:right;">R$ ${R(x.valor)}</td>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;font-size:11px;color:#999;">${x.motivo || ''}</td>
+    </tr>`).join('')
+
+  const rowsTrOut = trsOut.map(x => `
+    <tr style="background:#FFF5F5;">
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;">${x.competencia}</td>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;color:#A32D2D;">↗ Crédito para ${x.obra_destino}${x.nf_referencia ? ` (${x.nf_referencia})` : ''}</td>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;color:#A32D2D;text-align:right;">- R$ ${R(x.valor)}</td>
+      <td style="padding:7px 12px;border-bottom:0.5px solid #e5e5e0;font-size:11px;color:#999;">${x.motivo || ''}</td>
+    </tr>`).join('')
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório Detalhado — ${d.nome}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, Arial, sans-serif; color: #1a1a18; padding: 32px; background: #fff; font-size: 13px; }
+  @media print { body { padding: 16px; } .no-print { display: none; } }
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.4px; padding: 8px 12px; text-align: left; background: #f0f0ee; border-bottom: 0.5px solid #e5e5e0; }
+</style>
+</head>
+<body>
+  <button class="no-print" onclick="window.print()" style="margin-bottom:24px;padding:8px 20px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;">🖨️ Imprimir / Salvar PDF</button>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:1.5px solid #1a1a18;">
+    <div>
+      <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">AGOS Serviços</div>
+      <div style="font-size:20px;font-weight:600;">${d.nome}</div>
+      <div style="font-size:13px;color:#666;margin-top:2px;">Relatório detalhado de DS × NF Faturadas</div>
+    </div>
+    <div style="text-align:right;font-size:12px;color:#666;line-height:1.8;">
+      <div>Emissão: <strong style="color:#1a1a18;">${hoje}</strong></div>
+      <div>Competência: <strong style="color:#1a1a18;">${compLabel}</strong></div>
+      <div>Tipo: <strong style="color:#1a1a18;">${d.tipo === 'direto' ? 'Fatura direto' : 'Geosonda'}</strong></div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;">
+    <div style="background:#f0f0ee;border-radius:8px;padding:14px 16px;">
+      <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Total DS</div>
+      <div style="font-size:18px;font-weight:600;color:#854F0B;">R$ ${R(totalDs)}</div>
+    </div>
+    <div style="background:#f0f0ee;border-radius:8px;padding:14px 16px;">
+      <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">NF Faturada</div>
+      <div style="font-size:18px;font-weight:600;color:#3B6D11;">R$ ${R(totalFat)}</div>
+    </div>
+    <div style="background:#f0f0ee;border-radius:8px;padding:14px 16px;">
+      <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Saldo</div>
+      <div style="font-size:18px;font-weight:600;color:${saldo > 0.01 ? '#854F0B' : saldo < -0.01 ? '#A32D2D' : '#3B6D11'};">R$ ${R(saldo)}</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div>
+      <div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">DS Lançadas</div>
+      ${saldoInicial > 0 ? `<div style="background:#FAEEDA;border:0.5px solid #FAC775;border-radius:6px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:#854F0B;"><strong>Saldo anterior (até 31/03/2026):</strong> R$ ${R(saldoInicial)}</div>` : ''}
+      <table style="border:0.5px solid #e5e5e0;border-radius:6px;overflow:hidden;">
+        <thead><tr><th>Comp.</th><th>Nº DS</th><th>Tipo</th><th style="text-align:right;">Valor</th></tr></thead>
+        <tbody>
+          ${rowsDS}
+          ${rowsTrDsOut}
+          ${rowsTrDsIn}
+        </tbody>
+        <tfoot>
+          <tr style="background:#f0f0ee;">
+            <td colspan="3" style="padding:8px 12px;font-weight:600;font-size:12px;">Total DS${saldoInicial > 0 ? ' + Saldo anterior' : ''}</td>
+            <td style="padding:8px 12px;text-align:right;font-weight:600;">R$ ${R(totalDs)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div>
+      <div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">NF Faturadas</div>
+      <table style="border:0.5px solid #e5e5e0;border-radius:6px;overflow:hidden;">
+        <thead><tr><th>Comp.</th><th>NF</th><th style="text-align:right;">Valor</th><th>Obs.</th></tr></thead>
+        <tbody>
+          ${rowsFat || '<tr><td colspan="4" style="padding:12px;text-align:center;color:#999;">Nenhum faturamento.</td></tr>'}
+          ${rowsTrIn}
+          ${rowsTrOut}
+        </tbody>
+        <tfoot>
+          <tr style="background:#f0f0ee;">
+            <td colspan="2" style="padding:8px 12px;font-weight:600;font-size:12px;">Total faturado</td>
+            <td style="padding:8px 12px;text-align:right;font-weight:600;color:#3B6D11;">R$ ${R(totalFat)}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div style="margin-top:12px;padding:12px 14px;background:${saldo > 0.01 ? '#FAEEDA' : saldo < -0.01 ? '#FCEBEB' : '#EAF3DE'};border-radius:8px;">
+        <div style="font-size:12px;color:#666;margin-bottom:4px;">Saldo final</div>
+        <div style="font-size:18px;font-weight:600;color:${saldo > 0.01 ? '#854F0B' : saldo < -0.01 ? '#A32D2D' : '#3B6D11'};">R$ ${R(saldo)}</div>
+        <div style="font-size:11px;color:#999;margin-top:2px;">${saldo > 0.01 ? 'Valor pendente a faturar' : saldo < -0.01 ? 'Excedente faturado' : 'Quitado'}</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:24px;padding:10px 14px;border:0.5px solid #e5e5e0;border-radius:6px;font-size:11px;color:#999;text-align:center;">
+    Documento gerado automaticamente pelo sistema de Controle de Faturamento — AGOS Serviços — ${hoje}
+  </div>
+</body>
+</html>`
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `relatorio_${d.nome}_${filtroComp === 'todos' ? 'todos' : filtroComp.replace('/', '-')}_${new Date().toISOString().slice(0,10)}.html`
   a.click()
 }
 
