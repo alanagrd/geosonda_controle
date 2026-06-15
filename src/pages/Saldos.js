@@ -239,6 +239,7 @@ export default function Saldos() {
             <input style={{ width: 200 }} placeholder="Buscar obra..." value={busca} onChange={e => setBusca(e.target.value)} />
             <button className="success" onClick={() => { setErroTrDs(''); setFormTrDs({ competencia: '', obra_origem: '', obra_destino: '', valor: '', motivo: '' }); setModalTrDs(true) }}>↔ Transferir DS</button>
             <button className="success" onClick={() => exportarCSV(dados)}>↓ Exportar CSV</button>
+            <button onClick={() => exportarPDF(filtrados, filtroComp, filtroTipo, getDadosComp)} style={{ background: 'var(--red-bg)', color: 'var(--red)', borderColor: '#F7C1C1' }}>↓ Relatório PDF</button>
           </div>
         </div>
 
@@ -407,6 +408,120 @@ function DetalheObra({ d, filtroComp }) {
       </div>
     </div>
   )
+}
+
+function exportarPDF(filtrados, filtroComp, filtroTipo, getDadosComp) {
+  const R = v => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const hoje = new Date().toLocaleDateString('pt-BR')
+  const compLabel = filtroComp === 'todos' ? 'Todas' : filtroComp
+  const tipoLabel = filtroTipo === 'todos' ? 'Todos' : filtroTipo === 'direto' ? 'Direto' : 'Geosonda'
+
+  const totalDs  = filtrados.reduce((a, d) => a + getDadosComp(d, filtroComp).totalDs, 0)
+  const totalFat = filtrados.reduce((a, d) => a + getDadosComp(d, filtroComp).totalFat, 0)
+  const totalSaldo = totalDs - totalFat
+
+  const diretos  = filtrados.filter(d => d.tipo === 'direto')
+  const geosonda = filtrados.filter(d => d.tipo === 'geosonda')
+
+  function renderGrupo(lista, titulo) {
+    if (lista.length === 0) return ''
+    const rows = lista.sort((a, b) => a.nome.localeCompare(b.nome)).map(d => {
+      const { totalDs, totalFat } = getDadosComp(d, filtroComp)
+      const saldo = totalDs - totalFat
+      const isQuit = Math.abs(saldo) <= 0.01
+      return `<tr>
+        <td style="padding:8px 12px;border-bottom:0.5px solid #e5e5e0;font-weight:500;">${d.nome}</td>
+        <td style="padding:8px 12px;border-bottom:0.5px solid #e5e5e0;text-align:right;">${R(totalDs)}</td>
+        <td style="padding:8px 12px;border-bottom:0.5px solid #e5e5e0;text-align:right;color:#3B6D11;">${R(totalFat)}</td>
+        <td style="padding:8px 12px;border-bottom:0.5px solid #e5e5e0;text-align:right;font-weight:500;color:${saldo > 0.01 ? '#854F0B' : saldo < -0.01 ? '#A32D2D' : '#3B6D11'};">${R(saldo)}</td>
+        <td style="padding:8px 12px;border-bottom:0.5px solid #e5e5e0;text-align:center;">
+          <span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;background:${isQuit ? '#EAF3DE' : '#FAEEDA'};color:${isQuit ? '#3B6D11' : '#854F0B'};">${isQuit ? 'Quitado' : 'Pendente'}</span>
+        </td>
+      </tr>`
+    }).join('')
+    return `
+      <div style="margin-top:20px;">
+        <div style="padding:7px 12px;background:#f0f0ee;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;border-radius:6px 6px 0 0;border:0.5px solid #e5e5e0;">${titulo}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;border:0.5px solid #e5e5e0;border-top:none;">
+          <thead>
+            <tr style="background:#f0f0ee;">
+              <th style="padding:8px 12px;text-align:left;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.4px;border-bottom:0.5px solid #e5e5e0;">Obra</th>
+              <th style="padding:8px 12px;text-align:right;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.4px;border-bottom:0.5px solid #e5e5e0;">Total DS</th>
+              <th style="padding:8px 12px;text-align:right;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.4px;border-bottom:0.5px solid #e5e5e0;">NF Faturada</th>
+              <th style="padding:8px 12px;text-align:right;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.4px;border-bottom:0.5px solid #e5e5e0;">Saldo</th>
+              <th style="padding:8px 12px;text-align:center;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.4px;border-bottom:0.5px solid #e5e5e0;">Status</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+          <tfoot>
+            <tr style="background:#f0f0ee;">
+              <td style="padding:8px 12px;font-weight:600;font-size:12px;color:#666;">Total</td>
+              <td style="padding:8px 12px;text-align:right;font-weight:600;">${R(lista.reduce((a,d) => a + getDadosComp(d,filtroComp).totalDs, 0))}</td>
+              <td style="padding:8px 12px;text-align:right;font-weight:600;color:#3B6D11;">${R(lista.reduce((a,d) => a + getDadosComp(d,filtroComp).totalFat, 0))}</td>
+              <td style="padding:8px 12px;text-align:right;font-weight:600;color:#854F0B;">${R(lista.reduce((a,d) => { const {totalDs,totalFat} = getDadosComp(d,filtroComp); return a + totalDs - totalFat }, 0))}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>`
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório de Faturamento — Geosonda</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, Arial, sans-serif; color: #1a1a18; padding: 32px; background: #fff; }
+  @media print { body { padding: 16px; } .no-print { display: none; } }
+</style>
+</head>
+<body>
+  <button class="no-print" onclick="window.print()" style="margin-bottom:24px;padding:8px 20px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;">🖨️ Imprimir / Salvar PDF</button>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:1.5px solid #1a1a18;">
+    <div>
+      <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">AGOS Serviços</div>
+      <div style="font-size:20px;font-weight:600;">Relatório de Faturamento</div>
+      <div style="font-size:13px;color:#666;margin-top:2px;">Controle de saldos por obra — Geosonda</div>
+    </div>
+    <div style="text-align:right;font-size:12px;color:#666;line-height:1.8;">
+      <div>Emissão: <strong style="color:#1a1a18;">${hoje}</strong></div>
+      <div>Competência: <strong style="color:#1a1a18;">${compLabel}</strong></div>
+      <div>Tipo: <strong style="color:#1a1a18;">${tipoLabel}</strong></div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;">
+    <div style="background:#f0f0ee;border-radius:8px;padding:14px 16px;">
+      <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Total DS</div>
+      <div style="font-size:18px;font-weight:600;color:#854F0B;">R$ ${R(totalDs)}</div>
+    </div>
+    <div style="background:#f0f0ee;border-radius:8px;padding:14px 16px;">
+      <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">NF Faturada</div>
+      <div style="font-size:18px;font-weight:600;color:#3B6D11;">R$ ${R(totalFat)}</div>
+    </div>
+    <div style="background:#f0f0ee;border-radius:8px;padding:14px 16px;">
+      <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Saldo a faturar</div>
+      <div style="font-size:18px;font-weight:600;color:${totalSaldo > 0 ? '#854F0B' : '#3B6D11'};">R$ ${R(totalSaldo)}</div>
+    </div>
+  </div>
+
+  ${renderGrupo(diretos, 'Obras — fatura direto ao cliente')}
+  ${renderGrupo(geosonda, 'Centros de custo — Geosonda')}
+
+  <div style="margin-top:24px;padding:10px 14px;border:0.5px solid #e5e5e0;border-radius:6px;font-size:11px;color:#999;text-align:center;">
+    Documento gerado automaticamente pelo sistema de Controle de Faturamento — AGOS Serviços — ${hoje}
+  </div>
+</body>
+</html>`
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `relatorio_geosonda_${filtroComp === 'todos' ? 'todos' : filtroComp.replace('/', '-')}_${new Date().toISOString().slice(0,10)}.html`
+  a.click()
 }
 
 function exportarCSV(dados) {
