@@ -22,6 +22,7 @@ export default function Faturamento() {
   const [saving, setSaving] = useState(false)
   const [erro, setErro]     = useState('')
   const [editId, setEditId] = useState(null)
+  const [ordemAlfabetica, setOrdemAlfabetica] = useState(false)
 
   useEffect(() => { carregar() }, [])
 
@@ -105,7 +106,7 @@ export default function Faturamento() {
     if (busca && !f.obra.toLowerCase().includes(busca.toLowerCase()) && !(f.numero_nf || '').includes(busca)) return false
     if (filtroComp !== 'todos' && f.competencia !== filtroComp) return false
     return true
-  })
+  }).sort((a, b) => ordemAlfabetica ? a.obra.localeCompare(b.obra) : new Date(b.data_nf || 0) - new Date(a.data_nf || 0))
   const totalFiltrado = filtradas.reduce((a, f) => a + Number(f.valor), 0)
 
   const saldoOrigem = saldos[formTr.obra_origem] || null
@@ -124,6 +125,7 @@ export default function Faturamento() {
           <div style={{ display: 'flex', gap: 8 }}>
             <input style={{ width: 200 }} placeholder="Buscar obra, nº NF..." value={busca} onChange={e => setBusca(e.target.value)} />
             <button className="success" onClick={() => { setErro(''); setFormTr(EMPTY_TR); setModalTr(true) }}>↔ Transferir saldo</button>
+            <button onClick={() => setOrdemAlfabetica(o => !o)}>{ordemAlfabetica ? 'Ordenar por data' : 'Ordenar A→Z'}</button>
             <button className="primary" onClick={() => { setErro(''); setEditId(null); setFormFat(EMPTY_FAT); setModalFat(true) }}>+ Lançar NF</button>
           </div>
         </div>
