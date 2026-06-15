@@ -163,7 +163,7 @@ export default function Saldos() {
               const { totalDs, totalFat } = getDadosComp(d, filtroComp)
               const trTotal = filtroComp === 'todos' ? d.totalTr : 0
               const saldo = filtroComp === 'todos' ? getSaldo(d) : totalDs - totalFat
-              const pct = totalDs > 0 ? Math.min(100, Math.max(0, ((totalFat + (filtroComp === 'todos' ? d.totalTr : 0)) / totalDs) * 100)) : 0
+              const pct = totalDs > 0 ? Math.min(100, Math.max(0, (totalFat / totalDs) * 100)) : 0
               const isExp = expandida === d.nome
 
               let badge, saldoCls
