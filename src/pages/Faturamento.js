@@ -55,7 +55,11 @@ export default function Faturamento() {
 
   function verDistribuicao(f) {
     if (!f.numero_nf) return
-    const trs = transferencias.filter(t => t.nf_referencia === f.numero_nf)
+    const nfNum = String(f.numero_nf).trim()
+    const trs = transferencias.filter(t => {
+      const ref = (t.nf_referencia || '').replace(/^NF\s*/i, '').trim()
+      return ref === nfNum
+    })
     setDistribucao({ nf: f.numero_nf, obra: f.obra, valor: f.valor, competencia: f.competencia, transferencias: trs })
   }
 
