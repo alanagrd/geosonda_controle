@@ -44,6 +44,10 @@ export default function DS() {
   const [preview, setPreview] = useState(null) // { rows, comp }
   const [erro, setErro] = useState('')
   const [confirmImport, setConfirmImport] = useState(false)
+  const [obrasNaocadastradas, setObrasNaocastradas] = useState([])
+  const [modalNovas, setModalNovas] = useState(false)
+  const [tiposNovas, setTiposNovas] = useState({})
+  const [salvandoNovas, setSalvandoNovas] = useState(false)
 
   useEffect(() => { carregar() }, [])
 
@@ -138,7 +142,30 @@ export default function DS() {
 
     setImportando(false); setConfirmImport(false); setPreview(null)
     alert(`✅ ${novas.length} DS importadas com sucesso!${duplicadas > 0 ? `\n⚠️ ${duplicadas} DS ignoradas (já existiam).` : ''}`)
+
+    // Verifica obras novas não cadastradas
+    const { data: obrasExistentes } = await supabase.schema('geosonda').from('obras').select('nome')
+    const nomesExistentes = new Set((obrasExistentes || []).map(o => o.nome))
+    const nomesImportados = [...new Set(novas.map(r => r.obra))]
+    const novasSemCadastro = nomesImportados.filter(n => !nomesExistentes.has(n))
+    if (novasSemCadastro.length > 0) {
+      const tiposIniciais = {}
+      novasSemCadastro.forEach(n => { tiposIniciais[n] = 'direto' })
+      setObrasNaocastradas(novasSemCadastro)
+      setTiposNovas(tiposIniciais)
+      setModalNovas(true)
+    }
+
     carregar()
+  }
+
+  async function salvarObrasNovas() {
+    setSalvandoNovas(true)
+    const payload = obrasNaocadastradas.map(nome => ({ nome, tipo: tiposNovas[nome] || 'direto' }))
+    await supabase.schema('geosonda').from('obras').insert(payload)
+    setSalvandoNovas(false)
+    setModalNovas(false)
+    setObrasNaocastradas([])
   }
 
   async function excluirDS(id) {
@@ -279,6 +306,31 @@ export default function DS() {
               <button onClick={() => { setConfirmImport(false); setPreview(null) }}>Cancelar</button>
               <button className="primary" onClick={confirmarImportacao} disabled={importando}>
                 {importando ? 'Importando...' : `Importar ${preview.rows.length} DS`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {modalNovas && (
+        <div className="modal-overlay open" onClick={e => e.target === e.currentTarget && setModalNovas(false)}>
+          <div className="modal">
+            <h2>Obras novas detectadas</h2>
+            <div style={{ background: 'var(--amber-bg)', border: '0.5px solid #FAC775', borderRadius: 'var(--r)', padding: '10px 14px', marginBottom: 16, fontSize: 13, color: 'var(--amber)' }}>
+              {obrasNaocadastradas.length} obra(s) importadas ainda não estão cadastradas. Defina o tipo de cada uma:
+            </div>
+            {obrasNaocadastradas.map(nome => (
+              <div key={nome} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '0.5px solid var(--border)' }}>
+                <strong style={{ fontSize: 13 }}>{nome}</strong>
+                <select value={tiposNovas[nome] || 'direto'} onChange={e => setTiposNovas(t => ({ ...t, [nome]: e.target.value }))} style={{ width: 200 }}>
+                  <option value="direto">Fatura direto ao cliente</option>
+                  <option value="geosonda">Geosonda (C. Custo interno)</option>
+                </select>
+              </div>
+            ))}
+            <div className="modal-footer">
+              <button onClick={() => setModalNovas(false)}>Cadastrar depois</button>
+              <button className="primary" onClick={salvarObrasNovas} disabled={salvandoNovas}>
+                {salvandoNovas ? 'Salvando...' : 'Cadastrar obras'}
               </button>
             </div>
           </div>
