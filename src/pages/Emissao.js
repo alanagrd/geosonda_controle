@@ -106,8 +106,8 @@ export default function Emissao() {
 
   function gerarHTMLRelacao() {
     const hoje = new Date().toLocaleDateString('pt-BR')
-    const [m, a] = (comp || '').split('/')
-    const periodo = comp ? `${m}/${String(a).slice(-2)}` : ''
+    const [m, ano] = (comp || '').split('/')
+    const periodo = comp ? `${m}/${String(ano).slice(-2)}` : ''
 
     const rowsDireto = obras.map(o => `
       <tr>
@@ -211,7 +211,7 @@ export default function Emissao() {
 
   function gerarHTMLND() {
     const hoje = new Date().toLocaleDateString('pt-BR')
-    const [m, a] = (comp || '').split('/')
+    const [m, ano] = (comp || '').split('/')
     const mesNome = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][parseInt(m)] || ''
 
     const rows = obras.map(o => `
@@ -226,7 +226,7 @@ export default function Emissao() {
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Nota de Débito Nº ${proximoNd} — ${mesNome}/${a}</title>
+<title>Nota de Débito Nº ${proximoNd} — ${mesNome}/${ano}</title>
 <style>
   * { box-sizing:border-box; margin:0; padding:0; }
   body { font-family:Arial,sans-serif; color:#1a1a18; padding:28px; background:#fff; font-size:12px; }
@@ -254,7 +254,7 @@ export default function Emissao() {
         <div style="font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Nota de Débito</div>
       </td>
       <td style="padding:8px 12px;border-right:1px solid #1a1a18;text-align:center;width:20%;">
-        <div style="font-size:14px;font-weight:700;">${mesNome}-${String(a).slice(-2)}</div>
+        <div style="font-size:14px;font-weight:700;">${mesNome}-${String(ano).slice(-2)}</div>
       </td>
       <td style="padding:4px 12px;border-right:1px solid #1a1a18;width:15%;text-align:center;">
         <div style="font-size:10px;color:#666;">VALOR R$</div>
