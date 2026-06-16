@@ -7,6 +7,7 @@ const navItems = [
   { to: '/ds',          label: 'DS Importadas' },
   { to: '/faturamento', label: 'Faturamento' },
   { to: '/obras',       label: 'Obras / C. Custo' },
+  { to: '/emissao',    label: 'Emissão ND' },
 ]
 
 export default function Layout({ session }) {

@@ -7,6 +7,7 @@ import Obras from './pages/Obras'
 import DS from './pages/DS'
 import Faturamento from './pages/Faturamento'
 import Saldos from './pages/Saldos'
+import Emissao from './pages/Emissao'
 
 function PrivateRoute({ session, children }) {
   if (!session) return <Navigate to="/login" replace />
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="ds"          element={<DS />} />
           <Route path="faturamento" element={<Faturamento />} />
           <Route path="saldos"      element={<Saldos />} />
+          <Route path="emissao"     element={<Emissao />} />
         </Route>
       </Routes>
     </BrowserRouter>
