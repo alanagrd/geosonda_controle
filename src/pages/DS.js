@@ -48,6 +48,10 @@ export default function DS() {
   const [modalNovas, setModalNovas] = useState(false)
   const [tiposNovas, setTiposNovas] = useState({})
   const [salvandoNovas, setSalvandoNovas] = useState(false)
+  const [modalEdit, setModalEdit] = useState(false)
+  const [formEdit, setFormEdit] = useState(null)
+  const [salvandoEdit, setSalvandoEdit] = useState(false)
+  const [erroEdit, setErroEdit] = useState('')
 
   useEffect(() => { carregar() }, [])
 
@@ -159,6 +163,41 @@ export default function DS() {
     carregar()
   }
 
+  function abrirEditar(d) {
+    setFormEdit({
+      id: d.id,
+      competencia: d.competencia || '',
+      numero_ds: d.numero_ds || '',
+      obra: d.obra || '',
+      valor: d.valor || '',
+      tipo_ds: d.tipo_ds || '',
+      filial: d.filial || '',
+      cod_cliente: d.cod_cliente || '',
+      nome_cliente: d.nome_cliente || '',
+      cod_ccusto: d.cod_ccusto || '',
+    })
+    setErroEdit('')
+    setModalEdit(true)
+  }
+
+  async function salvarEdicao() {
+    if (!formEdit.obra || !formEdit.valor || !formEdit.competencia) { setErroEdit('Preencha obra, competência e valor.'); return }
+    setSalvandoEdit(true); setErroEdit('')
+    const { error } = await supabase.schema('geosonda').from('ds').update({
+      competencia: formEdit.competencia,
+      numero_ds: parseInt(formEdit.numero_ds) || 0,
+      obra: formEdit.obra.toUpperCase().trim(),
+      valor: parseFloat(formEdit.valor),
+      tipo_ds: formEdit.tipo_ds.toUpperCase().trim(),
+      filial: parseInt(formEdit.filial) || null,
+      cod_cliente: parseInt(formEdit.cod_cliente) || null,
+      nome_cliente: formEdit.nome_cliente || null,
+      cod_ccusto: parseInt(formEdit.cod_ccusto) || null,
+    }).eq('id', formEdit.id)
+    if (error) { setErroEdit(error.message); setSalvandoEdit(false); return }
+    setSalvandoEdit(false); setModalEdit(false); setFormEdit(null); carregar()
+  }
+
   async function salvarObrasNovas() {
     setSalvandoNovas(true)
     const payload = obrasNaocadastradas.map(nome => ({ nome, tipo: tiposNovas[nome] || 'direto' }))
@@ -261,7 +300,12 @@ export default function DS() {
                   <td style={{ fontSize: 12, color: 'var(--text3)' }}>{d.nome_cliente || '—'}</td>
                   <td><span className="badge badge-gray">{d.tipo_ds}</span></td>
                   <td className="num">R$ {R(d.valor)}</td>
-                  <td><button className="sm danger" onClick={() => excluirDS(d.id)}>Remover</button></td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="sm" onClick={() => abrirEditar(d)}>Editar</button>
+                      <button className="sm danger" onClick={() => excluirDS(d.id)}>Remover</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -311,6 +355,62 @@ export default function DS() {
           </div>
         </div>
       )}
+      {modalEdit && formEdit && (
+        <div className="modal-overlay open" onClick={e => e.target === e.currentTarget && setModalEdit(false)}>
+          <div className="modal">
+            <h2>Editar DS</h2>
+            <div className="form-row">
+              <div className="field"><label>Competência (MM/AAAA)</label>
+                <input value={formEdit.competencia} onChange={e => setFormEdit(f => ({ ...f, competencia: e.target.value }))} placeholder="05/2026" />
+              </div>
+              <div className="field"><label>Nº DS</label>
+                <input type="number" value={formEdit.numero_ds} onChange={e => setFormEdit(f => ({ ...f, numero_ds: e.target.value }))} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="field"><label>Obra / C. Custo</label>
+                <input value={formEdit.obra} onChange={e => setFormEdit(f => ({ ...f, obra: e.target.value }))} />
+              </div>
+              <div className="field"><label>Tipo DS</label>
+                <select value={formEdit.tipo_ds} onChange={e => setFormEdit(f => ({ ...f, tipo_ds: e.target.value }))}>
+                  <option value="VALE">VALE</option>
+                  <option value="FECHAMENTO">FECHAMENTO</option>
+                  <option value="COMPLEMENTO">COMPLEMENTO</option>
+                  <option value="DISPENSA">DISPENSA</option>
+                  <option value="PLR">PLR</option>
+                </select>
+              </div>
+            </div>
+            <div className="field"><label>Valor (R$)</label>
+              <input type="number" step="0.01" value={formEdit.valor} onChange={e => setFormEdit(f => ({ ...f, valor: e.target.value }))} />
+            </div>
+            <div className="form-row">
+              <div className="field"><label>Nome Cliente</label>
+                <input value={formEdit.nome_cliente || ''} onChange={e => setFormEdit(f => ({ ...f, nome_cliente: e.target.value }))} />
+              </div>
+              <div className="field"><label>Filial</label>
+                <input type="number" value={formEdit.filial || ''} onChange={e => setFormEdit(f => ({ ...f, filial: e.target.value }))} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="field"><label>Cód. Cliente</label>
+                <input type="number" value={formEdit.cod_cliente || ''} onChange={e => setFormEdit(f => ({ ...f, cod_cliente: e.target.value }))} />
+              </div>
+              <div className="field"><label>Cód. C. Custo</label>
+                <input type="number" value={formEdit.cod_ccusto || ''} onChange={e => setFormEdit(f => ({ ...f, cod_ccusto: e.target.value }))} />
+              </div>
+            </div>
+            {erroEdit && <p style={{ color: 'var(--red)', fontSize: 13 }}>{erroEdit}</p>}
+            <div className="modal-footer">
+              <button onClick={() => setModalEdit(false)}>Cancelar</button>
+              <button className="primary" onClick={salvarEdicao} disabled={salvandoEdit}>
+                {salvandoEdit ? 'Salvando...' : 'Salvar alterações'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalNovas && (
         <div className="modal-overlay open" onClick={e => e.target === e.currentTarget && setModalNovas(false)}>
           <div className="modal">
